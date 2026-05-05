@@ -18,6 +18,8 @@ class _DiyPageState extends ConsumerState<DiyPage> {
   double _hints = 2;
   double _mistakes = 2;
   bool _autoCheck = true;
+  double _timeLimitMin = 0; // 0 = no limit; in minutes
+  bool _allowNotes = true;
   final _nameCtrl = TextEditingController();
 
   @override
@@ -32,6 +34,8 @@ class _DiyPageState extends ConsumerState<DiyPage> {
         hintLimit: _hints.round(),
         mistakeLimit: _mistakes.round(),
         autoCheck: _autoCheck,
+        timeLimitSec: (_timeLimitMin * 60).round(),
+        allowNotes: _allowNotes,
         name: name,
       );
 
@@ -45,16 +49,21 @@ class _DiyPageState extends ConsumerState<DiyPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _slider('挖空数', _blanks, 17, 64,
-              (v) => setState(() => _blanks = v)),
-          _slider('提示次数', _hints, 0, 9,
-              (v) => setState(() => _hints = v)),
-          _slider('容错次数', _mistakes, 0, 9,
-              (v) => setState(() => _mistakes = v)),
+          _slider('挖空数', _blanks, 17, 64, (v) => setState(() => _blanks = v)),
+          _slider('提示次数', _hints, 0, 9, (v) => setState(() => _hints = v)),
+          _slider(
+              '容错次数', _mistakes, 0, 9, (v) => setState(() => _mistakes = v)),
+          _sliderTimeLimit(),
           SwitchListTile(
             title: const Text('启用自动检查'),
             value: _autoCheck,
             onChanged: (v) => setState(() => _autoCheck = v),
+          ),
+          SwitchListTile(
+            title: const Text('允许铅笔笔记'),
+            subtitle: const Text('关闭后数字键盘上方不显示笔记按钮'),
+            value: _allowNotes,
+            onChanged: (v) => setState(() => _allowNotes = v),
           ),
           TextField(
             controller: _nameCtrl,
@@ -94,8 +103,7 @@ class _DiyPageState extends ConsumerState<DiyPage> {
             ],
           ),
           const Divider(height: 32),
-          Text('已保存预设',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text('已保存预设', style: Theme.of(context).textTheme.titleMedium),
           if (presets.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
@@ -106,8 +114,13 @@ class _DiyPageState extends ConsumerState<DiyPage> {
               final p = presets[i];
               return ListTile(
                 title: Text(p.displayName),
-                subtitle: Text(
-                    '挖空 ${p.blanks} · 提示 ${p.hintLimit} · 容错 ${p.mistakeLimit}'),
+                subtitle: Text([
+                  '挖空 ${p.blanks}',
+                  '提示 ${p.hintLimit}',
+                  '容错 ${p.mistakeLimit}',
+                  if (p.timeLimitSec > 0) '限时 ${p.timeLimitSec ~/ 60}min',
+                  if (!p.allowNotes) '无笔记',
+                ].join(' · ')),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () async {
@@ -120,6 +133,28 @@ class _DiyPageState extends ConsumerState<DiyPage> {
             }),
         ],
       ),
+    );
+  }
+
+  Widget _sliderTimeLimit() {
+    final label =
+        _timeLimitMin == 0 ? '时间限制: 无限制' : '时间限制: ${_timeLimitMin.round()} 分钟';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(label),
+        ),
+        Slider(
+          value: _timeLimitMin,
+          min: 0,
+          max: 30,
+          divisions: 30,
+          label: _timeLimitMin == 0 ? '无限制' : '${_timeLimitMin.round()}min',
+          onChanged: (v) => setState(() => _timeLimitMin = v),
+        ),
+      ],
     );
   }
 
@@ -145,7 +180,7 @@ class _DiyPageState extends ConsumerState<DiyPage> {
     final controller = ref.read(gameControllerProvider.notifier);
     await controller.startNewGame(config);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const GamePage()));
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => const GamePage()));
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/difficulty.dart';
@@ -28,6 +30,7 @@ class _Move {
 
 class GameController extends Notifier<GameState?> {
   GameTimer? _timer;
+  StreamSubscription<int>? _timerSub;
   final List<_Move> _undoStack = [];
 
   /// Convenience getter so widgets can subscribe to the timer's tick stream.
@@ -36,6 +39,7 @@ class GameController extends Notifier<GameState?> {
   @override
   GameState? build() {
     ref.onDispose(() {
+      _timerSub?.cancel();
       _timer?.dispose();
     });
     return null;
@@ -89,7 +93,8 @@ class GameController extends Notifier<GameState?> {
 
   /// Commits a digit into [index]. Wrong commits increase the mistake count
   /// when auto-check is enabled.
-  Future<void> setValue(int index, int value, {required bool inNotesMode}) async {
+  Future<void> setValue(int index, int value,
+      {required bool inNotesMode}) async {
     final s = state;
     if (s == null || !s.isActive) return;
     if (s.isGiven(index)) return;
@@ -244,8 +249,22 @@ class GameController extends Notifier<GameState?> {
   }
 
   void _resetTimer(int initialMs) {
+    _timerSub?.cancel();
     _timer?.dispose();
     _timer = GameTimer(initialMs: initialMs);
+    _timerSub = _timer!.stream.listen(_onTimerTick);
+  }
+
+  Future<void> _onTimerTick(int ms) async {
+    final s = state;
+    if (s == null || !s.isActive) return;
+    final limit = s.config.timeLimitSec;
+    if (limit > 0 && ms >= limit * 1000) {
+      _timer?.pause();
+      _flushTimerToState();
+      state = state!.copyWith(failed: true);
+      await _onFinished();
+    }
   }
 
   /// Should be called by the UI when leaving the game page.

@@ -9,13 +9,14 @@ class SudokuApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(themeControllerProvider);
+    final themeSettings = ref.watch(themeControllerProvider);
+    final seed = themeSettings.colorScheme.seed;
     return MaterialApp(
       title: 'Sudoku',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: mode,
+      theme: AppTheme.light(seed),
+      darkTheme: AppTheme.dark(seed),
+      themeMode: themeSettings.mode,
       home: const HomePage(),
     );
   }

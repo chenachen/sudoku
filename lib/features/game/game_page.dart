@@ -23,13 +23,14 @@ class _GamePageState extends ConsumerState<GamePage>
   bool _notesMode = false;
   int _displayMs = 0;
   StreamSubscription<int>? _tickSub;
+  late GameController _gameController;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final controller = ref.read(gameControllerProvider.notifier);
-    _tickSub = controller.tickStream?.listen((ms) {
+    _gameController = ref.read(gameControllerProvider.notifier);
+    _tickSub = _gameController.tickStream?.listen((ms) {
       if (mounted) setState(() => _displayMs = ms);
     });
     final s = ref.read(gameControllerProvider);
@@ -40,7 +41,7 @@ class _GamePageState extends ConsumerState<GamePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      ref.read(gameControllerProvider.notifier).snapshotAndPersist();
+      _gameController.snapshotAndPersist();
     }
   }
 
@@ -48,7 +49,7 @@ class _GamePageState extends ConsumerState<GamePage>
   void dispose() {
     _tickSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    ref.read(gameControllerProvider.notifier).snapshotAndPersist();
+    _gameController.snapshotAndPersist();
     super.dispose();
   }
 
@@ -73,10 +74,16 @@ class _GamePageState extends ConsumerState<GamePage>
     });
 
     final paused = controller.isPaused && game.isActive;
+    // Ensure notes mode is off if config disables it
+    if (_notesMode && !game.config.allowNotes) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _notesMode = false);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${game.config.displayName} · ${_fmt(_displayMs)}'),
+        title: Text(_title(game, _displayMs)),
         actions: [
           IconButton(
             tooltip: paused ? '继续' : '暂停',
@@ -119,8 +126,8 @@ class _GamePageState extends ConsumerState<GamePage>
                         color: Colors.black.withValues(alpha: 0.6),
                         alignment: Alignment.center,
                         child: const Text('已暂停',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 28)),
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 28)),
                       ),
                     ),
                 ],
@@ -129,12 +136,12 @@ class _GamePageState extends ConsumerState<GamePage>
             const Spacer(),
             ActionBar(
               notesMode: _notesMode,
+              allowNotes: game.config.allowNotes,
               onToggleNotes: () => setState(() => _notesMode = !_notesMode),
               onUndo: () => controller.undo(),
               onErase: () {
                 if (_selected != null) {
-                  controller.setValue(_selected!, 0,
-                      inNotesMode: false);
+                  controller.setValue(_selected!, 0, inNotesMode: false);
                 }
               },
               onHint: () {
@@ -148,10 +155,10 @@ class _GamePageState extends ConsumerState<GamePage>
               child: NumberPad(
                 board: game.current,
                 notesMode: _notesMode,
+                dimCompleted: settings.dimCompletedNumbers,
                 onTap: (n) {
                   if (_selected != null) {
-                    controller.setValue(_selected!, n,
-                        inNotesMode: _notesMode);
+                    controller.setValue(_selected!, n, inNotesMode: _notesMode);
                   }
                 },
               ),
@@ -164,12 +171,13 @@ class _GamePageState extends ConsumerState<GamePage>
   }
 
   void _showResultDialog(bool won, int ms) {
+    final config = ref.read(gameControllerProvider)?.config;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text(won ? '🎉 恭喜过关' : '😞 游戏失败'),
-        content: Text(won ? '用时 ${_fmt(ms)}' : '你已用尽所有容错次数。'),
+        title: Text(won ? '🎉 恭喜过关' : '😞 游戏结束'),
+        content: Text(won ? '用时 ${_fmt(ms)}' : '未能在限制内完成，继续加油！'),
         actions: [
           TextButton(
             onPressed: () {
@@ -178,9 +186,36 @@ class _GamePageState extends ConsumerState<GamePage>
             },
             child: const Text('返回首页'),
           ),
+          if (config != null)
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await ref
+                    .read(gameControllerProvider.notifier)
+                    .startNewGame(config);
+                // stay on GamePage — already here
+                if (mounted) {
+                  setState(() {
+                    _selected = null;
+                    _notesMode = false;
+                  });
+                }
+              },
+              child: const Text('再来一局'),
+            ),
         ],
       ),
     );
+  }
+
+  static String _title(GameState game, int displayMs) {
+    final name = game.config.displayName;
+    final limit = game.config.timeLimitSec;
+    if (limit > 0) {
+      final remaining = (limit * 1000 - displayMs).clamp(0, limit * 1000);
+      return '$name · ⏱ ${_fmt(remaining)}';
+    }
+    return '$name · ${_fmt(displayMs)}';
   }
 
   static String _fmt(int ms) {

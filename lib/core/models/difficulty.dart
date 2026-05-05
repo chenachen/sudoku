@@ -11,6 +11,8 @@ class DifficultyConfig {
     required this.hintLimit,
     required this.mistakeLimit,
     this.autoCheck = true,
+    this.timeLimitSec = 0,
+    this.allowNotes = true,
     this.name,
   });
 
@@ -27,6 +29,12 @@ class DifficultyConfig {
 
   /// When true, conflicts and wrong commits are highlighted automatically.
   final bool autoCheck;
+
+  /// Time limit in seconds. 0 means no limit.
+  final int timeLimitSec;
+
+  /// When false, the pencil-note feature is disabled for this game.
+  final bool allowNotes;
 
   /// Optional display name for DIY presets.
   final String? name;
@@ -79,6 +87,8 @@ class DifficultyConfig {
         'hintLimit': hintLimit,
         'mistakeLimit': mistakeLimit,
         'autoCheck': autoCheck,
+        'timeLimitSec': timeLimitSec,
+        'allowNotes': allowNotes,
         if (name != null) 'name': name,
       };
 
@@ -89,6 +99,8 @@ class DifficultyConfig {
         hintLimit: json['hintLimit'] as int,
         mistakeLimit: json['mistakeLimit'] as int,
         autoCheck: (json['autoCheck'] as bool?) ?? true,
+        timeLimitSec: (json['timeLimitSec'] as int?) ?? 0,
+        allowNotes: (json['allowNotes'] as bool?) ?? true,
         name: json['name'] as String?,
       );
 

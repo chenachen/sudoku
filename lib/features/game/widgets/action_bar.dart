@@ -9,6 +9,7 @@ class ActionBar extends StatelessWidget {
     required this.onErase,
     required this.onHint,
     required this.hintsLeft,
+    this.allowNotes = true,
   });
 
   final bool notesMode;
@@ -17,6 +18,7 @@ class ActionBar extends StatelessWidget {
   final VoidCallback onErase;
   final VoidCallback onHint;
   final int hintsLeft;
+  final bool allowNotes;
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +26,17 @@ class ActionBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _Btn(icon: Icons.undo, label: '撤销', onTap: onUndo),
-        _Btn(icon: Icons.cleaning_services_outlined, label: '擦除', onTap: onErase),
         _Btn(
-          icon: notesMode ? Icons.edit_note : Icons.edit_outlined,
-          label: notesMode ? '笔记中' : '笔记',
-          onTap: onToggleNotes,
-          highlight: notesMode,
-        ),
+            icon: Icons.cleaning_services_outlined,
+            label: '擦除',
+            onTap: onErase),
+        if (allowNotes)
+          _Btn(
+            icon: notesMode ? Icons.edit_note : Icons.edit_outlined,
+            label: notesMode ? '笔记中' : '笔记',
+            onTap: onToggleNotes,
+            highlight: notesMode,
+          ),
         _Btn(
           icon: Icons.lightbulb_outline,
           label: '提示($hintsLeft)',

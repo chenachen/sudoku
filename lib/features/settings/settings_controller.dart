@@ -7,15 +7,24 @@ class AppSettings {
   const AppSettings({
     this.highlightSameNumber = true,
     this.autoCheck = true,
+    this.dimCompletedNumbers = true,
   });
 
   final bool highlightSameNumber;
   final bool autoCheck;
 
-  AppSettings copyWith({bool? highlightSameNumber, bool? autoCheck}) =>
+  /// When true, number-pad buttons for fully-placed digits are greyed out.
+  final bool dimCompletedNumbers;
+
+  AppSettings copyWith({
+    bool? highlightSameNumber,
+    bool? autoCheck,
+    bool? dimCompletedNumbers,
+  }) =>
       AppSettings(
         highlightSameNumber: highlightSameNumber ?? this.highlightSameNumber,
         autoCheck: autoCheck ?? this.autoCheck,
+        dimCompletedNumbers: dimCompletedNumbers ?? this.dimCompletedNumbers,
       );
 }
 
@@ -26,6 +35,7 @@ class SettingsController extends Notifier<AppSettings> {
     return AppSettings(
       highlightSameNumber: (raw['highlightSameNumber'] as bool?) ?? true,
       autoCheck: (raw['autoCheck'] as bool?) ?? true,
+      dimCompletedNumbers: (raw['dimCompletedNumbers'] as bool?) ?? true,
     );
   }
 
@@ -39,11 +49,17 @@ class SettingsController extends Notifier<AppSettings> {
     await _persist();
   }
 
+  Future<void> setDimCompletedNumbers(bool v) async {
+    state = state.copyWith(dimCompletedNumbers: v);
+    await _persist();
+  }
+
   Future<void> _persist() async {
     final storage = ref.read(storageProvider);
     final raw = Map<String, dynamic>.from(storage.loadSettings());
     raw['highlightSameNumber'] = state.highlightSameNumber;
     raw['autoCheck'] = state.autoCheck;
+    raw['dimCompletedNumbers'] = state.dimCompletedNumbers;
     await storage.saveSettings(raw);
   }
 }

@@ -2,18 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../../core/sudoku/board.dart';
 
-/// 1..9 number pad. Buttons for fully-placed digits (count == 9) are dimmed.
+/// 1..9 number pad. Buttons for fully-placed digits (count == 9) are dimmed
+/// when [dimCompleted] is true.
 class NumberPad extends StatelessWidget {
   const NumberPad({
     super.key,
     required this.board,
     required this.onTap,
     required this.notesMode,
+    this.dimCompleted = true,
   });
 
   final List<int> board;
   final ValueChanged<int> onTap;
   final bool notesMode;
+
+  /// Whether to grey out / disable buttons for digits already placed 9 times.
+  final bool dimCompleted;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,7 @@ class NumberPad extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(9, (i) {
         final n = i + 1;
-        final completed = counts[n] >= 9;
+        final completed = dimCompleted && counts[n] >= 9;
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -43,8 +48,8 @@ class NumberPad extends StatelessWidget {
               onPressed: completed ? null : () => onTap(n),
               child: Text(
                 '$n',
-                style: const TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
             ),
           ),
